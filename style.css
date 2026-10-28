@@ -3,7 +3,7 @@
 html { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; }
 img, svg { max-width: 100%; }
-/* Layout: one narrow column like a folded road map. Live map on top, then the round's new event, then the growing distance ladder. */
+/* Layout: one narrow column like a folded road map. Live map on top, then the round's new event, then the growing route. */
 :root {
   --paper: #EDF0EA;
   --sheet: #FAFBF7;
@@ -105,7 +105,7 @@ button:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
 .pick { margin-top: 4px; background: var(--survey); color: var(--survey-ink); border: 0; border-radius: 4px; padding: 9px 12px; font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; letter-spacing: 0.04em; text-transform: uppercase; }
 .vs { text-align: center; font-family: var(--f-display); font-weight: 800; color: var(--muted); margin: -4px 0; }
 
-.ladder { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.route { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .rung { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: baseline; padding: 10px 12px; background: var(--sheet); border: 1.5px solid var(--line); border-radius: 4px; }
 .rung .n { font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; color: var(--muted); }
 .rung .place { font-weight: 700; display: block; }
@@ -115,9 +115,9 @@ button:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
 .rung.anchorrow .n { color: var(--survey); }
 .rung.fresh.right { border-color: var(--good); background: var(--good-bg); }
 .rung.fresh.wrong { border-color: var(--miss); background: var(--miss-bg); }
-.gap { height: 8px; }
-.slot { margin: 6px 0; width: 100%; border: 2px dashed var(--water); background: transparent; color: var(--water); border-radius: 4px; padding: 7px; font-weight: 700; font-size: 0.86rem; }
-.slot:hover { background: var(--sea); }
+.spacer { height: 8px; }
+.gap { margin: 6px 0; width: 100%; border: 2px dashed var(--water); background: transparent; color: var(--water); border-radius: 4px; padding: 7px; font-weight: 700; font-size: 0.86rem; }
+.gap:hover { background: var(--sea); }
 
 .verdict { border-radius: 4px; padding: 12px 14px; font-weight: 600; margin: 0; }
 .verdict.right { background: var(--good-bg); color: var(--ink); border-left: 5px solid var(--good); }

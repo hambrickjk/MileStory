@@ -8,11 +8,11 @@
     "lat": 38.6247,
     "lon": -90.1848
   },
-  "pair": [
+  "openingPair": [
     "wright",
     "gold"
   ],
-  "deal": [
+  "incoming": [
     "mcd",
     "titanic",
     "lc",

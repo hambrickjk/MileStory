@@ -303,38 +303,38 @@ function eventCard(e, extra) {
 function rung(e, n, cls) {
   return `<li class="rung ${cls || ""}"><span class="n">${n}</span><span><span class="place">${e.place}</span><span class="ev">${e.what}, ${e.year}</span></span><span class="mi">${fmt(e.miles)}</span></li>`;
 }
-function ladderHTML(withSlots) {
+function routeHTML(withGaps) {
   const sorted = [...S.placed].sort((a, b) => EVENTS[a].miles - EVENTS[b].miles);
   let html = `<li class="rung anchorrow"><span class="n">★</span><span><span class="place">${ANCHOR.place}</span><span class="ev">${ANCHOR.label}</span></span><span class="mi">0 mi</span></li>`;
   sorted.forEach((id, i) => {
-    html += withSlots ? `<li><button class="slot" data-slot="${i}">Place here</button></li>` : `<li class="gap"></li>`;
+    html += withGaps ? `<li><button class="gap" data-gap="${i}">Place here</button></li>` : `<li class="spacer"></li>`;
     const cls = S.last && id === S.last.id && S.phase === "feedback" ? "fresh " + (S.last.ok ? "right" : "wrong") : "";
     html += rung(EVENTS[id], i + 1, cls);
   });
-  if (withSlots) html += `<li><button class="slot" data-slot="${sorted.length}">Place here</button></li>`;
+  if (withGaps) html += `<li><button class="gap" data-gap="${sorted.length}">Place here</button></li>`;
   return html;
 }
 function render() {
   renderPips();
   $("roundLabel").textContent = `Round ${S.round + 1} of ${ROUNDS}`;
   const stage = $("stage");
-  if (S.phase === "pair") {
-    const [a, b] = P.pair.map(id => EVENTS[id]);
+  if (S.phase === "opening") {
+    const [a, b] = P.openingPair.map(id => EVENTS[id]);
     stage.innerHTML = `<h2>Which happened closer to ${ANCHOR.short}?</h2>
       ${eventCard(a, `<button class="pick" data-pick="${a.id}">This one is closer</button>`)}
       <p class="vs">or</p>
       ${eventCard(b, `<button class="pick" data-pick="${b.id}">This one is closer</button>`)}`;
   } else if (S.phase === "place") {
-    stage.innerHTML = `<h2>Where does this one fit?</h2>${eventCard(EVENTS[S.current])}<p class="note">Tap the gap where it belongs in the list below.</p>`;
+    stage.innerHTML = `<h2>Where does this one fit?</h2>${eventCard(EVENTS[S.current])}<p class="note">Tap the gap where it belongs on your route below.</p>`;
   } else if (S.phase === "feedback") {
     const last = S.round + 1 >= ROUNDS;
     stage.innerHTML = `<p class="verdict ${S.last.ok ? "right" : "wrong"}">${S.last.msg}</p>
       <button class="primary" id="next">${last ? "See your result" : "Next event"}</button>`;
   }
-  $("ladder").innerHTML = ladderHTML(S.phase === "place");
+  $("route").innerHTML = routeHTML(S.phase === "place");
 }
-function judgePair(pick) {
-  const [a, b] = P.pair.map(id => EVENTS[id]);
+function judgeOpening(pick) {
+  const [a, b] = P.openingPair.map(id => EVENTS[id]);
   const closer = a.miles < b.miles ? a : b, farther = closer === a ? b : a;
   const ok = pick === closer.id;
   S.placed.push(a.id, b.id);
@@ -344,7 +344,7 @@ function judgePair(pick) {
   render();
   zoomTo(rangeFor(S.placed), null);
 }
-function judgeSlot(k) {
+function judgeGap(k) {
   const e = EVENTS[S.current];
   const sorted = [...S.placed].sort((a, b) => EVENTS[a].miles - EVENTS[b].miles);
   const lo = k === 0 ? 0 : EVENTS[sorted[k - 1]].miles, hi = k < sorted.length ? EVENTS[sorted[k]].miles : Infinity;
@@ -359,7 +359,7 @@ function judgeSlot(k) {
 function next() {
   S.round++;
   if (S.round >= ROUNDS) return finish();
-  S.current = P.deal[S.round - 1];
+  S.current = P.incoming[S.round - 1];
   S.phase = "place";
   render();
   $("play").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -372,7 +372,7 @@ function finish() {
     : score >= ROUNDS - 2 ? "Well navigated. Here's the full map." : "You got there. Here's how it all lays out.";
   const h = S.hints.size ? `  💡×${S.hints.size}` : "";
   $("share").textContent = `MileStory No. ${PUZZLE_NO} · ${ANCHOR.short}\n${score}/${ROUNDS}${h}\n${S.results.map(r => r ? "🟩" : "🟥").join("")}\n${location.origin}${location.pathname}`;
-  $("finalLadder").innerHTML = ladderHTML(false);
+  $("finalRoute").innerHTML = routeHTML(false);
   $("copy").textContent = "Copy result";
   show("result");
   zoomTo(rangeFor(S.placed), null);
@@ -383,11 +383,11 @@ document.addEventListener("click", ev => {
   const t = ev.target.closest("button");
   if (!t || !P) return;
   if (t.id === "start" || t.id === "again") {
-    S = fresh(); S.phase = "pair"; show("play"); render(); zoomTo(rangeFor([]), null);
+    S = fresh(); S.phase = "opening"; show("play"); render(); zoomTo(rangeFor([]), null);
     $("play").scrollIntoView({ behavior: "smooth", block: "start" });
   } else if (t.dataset.hint) { S.hints.add(t.dataset.hint); render(); }
-  else if (t.dataset.pick) judgePair(t.dataset.pick);
-  else if (t.dataset.slot != null) judgeSlot(+t.dataset.slot);
+  else if (t.dataset.pick) judgeOpening(t.dataset.pick);
+  else if (t.dataset.gap != null) judgeGap(+t.dataset.gap);
   else if (t.id === "next") next();
   else if (t.id === "copy") {
     const sel = () => { const r = document.createRange(); r.selectNodeContents($("share")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); t.textContent = "Selected, copy it"; };
@@ -409,14 +409,14 @@ document.addEventListener("click", ev => {
   ANCHOR = P.anchor;
   EVENTS = P.events;
   for (const id in EVENTS) Object.assign(EVENTS[id], { id, miles: miles(EVENTS[id].lat, EVENTS[id].lon) });
-  ROUNDS = 1 + P.deal.length;
+  ROUNDS = 1 + P.incoming.length;
 
   const [y, m, d] = PUZZLE_DATE.split("-").map(Number);
   $("meta").innerHTML = `No. ${PUZZLE_NO}<br>${new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
   $("anchorWhen").textContent = ANCHOR.date;
   $("anchorWhat").textContent = ANCHOR.text;
   $("anchorPlace").textContent = ANCHOR.place;
-  $("ladderLabel").textContent = `Nearest to ${ANCHOR.short}, top to bottom`;
+  $("routeLabel").textContent = `Nearest to ${ANCHOR.short}, top to bottom`;
   $("mapbar").textContent = `Centered on ${ANCHOR.short}`;
 
   if (window.d3) {
