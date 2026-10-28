@@ -284,7 +284,24 @@ const rangeFor = ids => Math.max(120, Math.max(0, ...ids.map(id => EVENTS[id].mi
 
 /* ---------- Game ---------- */
 function fresh() { return { round: 0, placed: [], results: [], hints: new Set(), current: null, last: null, phase: "intro" }; }
-function show(id) { ["intro", "play", "result"].forEach(s => $(s).hidden = s !== id); }
+function show(id) { ["play", "result"].forEach(s => $(s).hidden = s !== id); }
+function setAnchorCompact(on) {
+  $("anchor").classList.toggle("compact", on);
+  $("anchorToggle").hidden = !on && !$("anchor").dataset.opened;
+  $("anchorToggle").textContent = on ? "Show details" : "Hide details";
+  $("anchorToggle").setAttribute("aria-expanded", String(!on));
+}
+function startGame() {
+  S = fresh(); S.phase = "opening";
+  delete $("anchor").dataset.opened;
+  setAnchorCompact(false);
+  show("play"); render(); zoomTo(rangeFor([]), null);
+}
+function setHelp(open) {
+  $("howto").hidden = !open;
+  $("helpBtn").setAttribute("aria-expanded", String(open));
+  if (!open) { try { localStorage.setItem("milestory-seen-help", "1"); } catch (e) {} }
+}
 
 function renderPips() {
   $("pips").innerHTML = Array.from({ length: ROUNDS }, (_, i) => {
@@ -361,6 +378,7 @@ function next() {
   if (S.round >= ROUNDS) return finish();
   S.current = P.incoming[S.round - 1];
   S.phase = "place";
+  if (S.round === 1) setAnchorCompact(true);
   render();
   $("play").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -382,9 +400,13 @@ function finish() {
 document.addEventListener("click", ev => {
   const t = ev.target.closest("button");
   if (!t || !P) return;
-  if (t.id === "start" || t.id === "again") {
-    S = fresh(); S.phase = "opening"; show("play"); render(); zoomTo(rangeFor([]), null);
-    $("play").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (t.id === "again") { startGame(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  else if (t.id === "helpBtn") setHelp($("howto").hidden);
+  else if (t.id === "helpClose") setHelp(false);
+  else if (t.id === "anchorToggle") {
+    const opening = $("anchor").classList.contains("compact");
+    $("anchor").dataset.opened = "1";
+    setAnchorCompact(!opening);
   } else if (t.dataset.hint) { S.hints.add(t.dataset.hint); render(); }
   else if (t.dataset.pick) judgeOpening(t.dataset.pick);
   else if (t.dataset.gap != null) judgeGap(+t.dataset.gap);
@@ -401,7 +423,7 @@ document.addEventListener("click", ev => {
     const loaded = await loadPuzzle();
     P = loaded.puzzle; PUZZLE_NO = loaded.number; PUZZLE_DATE = loaded.date;
   } catch (e) {
-    $("intro").hidden = true;
+    $("anchor").hidden = true;
     $("loadError").hidden = false;
     $("loadError").textContent = "Today's puzzle didn't load. Check that puzzles/index.json lists it and the file name matches the date.";
     return;
@@ -413,9 +435,25 @@ document.addEventListener("click", ev => {
 
   const [y, m, d] = PUZZLE_DATE.split("-").map(Number);
   $("meta").innerHTML = `No. ${PUZZLE_NO}<br>${new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-  $("anchorWhen").textContent = ANCHOR.date;
-  $("anchorWhat").textContent = ANCHOR.text;
+  $("anchorTitle").textContent = ANCHOR.title;
+  $("anchorDate").textContent = ANCHOR.date;
+  $("anchorDesc").textContent = ANCHOR.description;
   $("anchorPlace").textContent = ANCHOR.place;
+  if (ANCHOR.image && ANCHOR.image.src) {
+    const img = $("anchorImg");
+    img.src = ANCHOR.image.src;
+    img.alt = ANCHOR.image.alt || ANCHOR.title;
+    img.onerror = () => { $("anchorFig").hidden = true; };
+    const credit = $("anchorCredit");
+    credit.textContent = "Photo: ";
+    if (ANCHOR.image.link) {
+      const a = document.createElement("a");
+      a.href = ANCHOR.image.link; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = ANCHOR.image.credit || "source";
+      credit.appendChild(a);
+    } else credit.textContent += ANCHOR.image.credit || "";
+    $("anchorFig").hidden = false;
+  }
   $("routeLabel").textContent = `Nearest to ${ANCHOR.short}, top to bottom`;
   $("mapbar").textContent = `Centered on ${ANCHOR.short}`;
 
@@ -428,8 +466,10 @@ document.addEventListener("click", ev => {
   readColors();
   if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColors(); drawMap(curRange, null); });
   window.addEventListener("resize", () => drawMap(curRange, null));
-  S = fresh();
-  drawMap(curRange, null);
+  let seen = false;
+  try { seen = !!localStorage.getItem("milestory-seen-help"); } catch (e) {}
+  if (!seen) setHelp(true);
+  startGame();
   await loadMap();
   drawMap(curRange, null);
 })();

@@ -1,7 +1,14 @@
 {
   "anchor": {
-    "date": "October 28, 1965",
-    "text": "Workers lift the final stainless-steel section into place, completing a 630-foot arch on the Mississippi riverfront.",
+    "title": "The Gateway Arch is completed",
+    "date": "Thursday, October 28, 1965",
+    "description": "After more than two years of building its two legs separately, crews set the 10-ton final section at the top of the 630-foot Arch. The morning sun had expanded the south leg so much that workers sprayed it with fire hoses to cool it, then used a hydraulic jack to pry the legs apart so the last piece could slide in. Vice President Hubert Humphrey watched from a helicopter.",
+    "image": {
+      "src": "https://www.nps.gov/jeff/learn/historyculture/images/Comp-Arch-Construction_3.jpg",
+      "alt": "The final section of the Gateway Arch being lifted into place at the top, October 28, 1965",
+      "credit": "National Park Service, JNEM Archives",
+      "link": "https://www.nps.gov/jeff/learn/historyculture/the-gateway-arch-celebrates-50th-year-of-completion.htm"
+    },
     "place": "St. Louis, Missouri",
     "short": "St. Louis",
     "label": "Gateway Arch completed, 1965",

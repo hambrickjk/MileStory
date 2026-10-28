@@ -39,11 +39,22 @@ Terms we use when talking about the game. The code uses the same names.
 ## Adding a puzzle
 
 1. Copy an existing file in `puzzles/` and rename it to the new date, like `2026-10-29.json`.
-2. Fill in the `anchor` (something that happened on this calendar date) and the `events`.
+2. Fill in the `anchor` (something that happened on this calendar date) and the `events`. See the anchor fields below.
 3. Set `openingPair` to the two event ids for round 1, and `incoming` to the rest in the order they appear.
 4. Add the date to the `dates` list in `puzzles/index.json`.
 
 The game shows today's puzzle by the player's local date. If there's no file for today, it shows the most recent earlier one. Add `?date=2026-10-29` to the URL to test a specific day.
+
+### Anchor fields
+
+| Field | What it is |
+| --- | --- |
+| `title` | Headline, e.g. "The Gateway Arch is completed" |
+| `date` | Full date as shown, e.g. "Thursday, October 28, 1965" |
+| `description` | Two or three sentences about what happened |
+| `image` | Optional: `src` (a link, or a file in `images/`), `alt` (describes the picture), `credit`, and `link` to the source page. Use public-domain or openly licensed photos, such as National Park Service, Library of Congress or Wikimedia Commons. |
+| `place`, `short`, `label` | Full place name, a short map label, and the one-line name shown at the top of the route |
+| `lat`, `lon` | Decimal coordinates |
 
 ### Event fields
 

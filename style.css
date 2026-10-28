@@ -73,10 +73,26 @@ h2 { font-family: var(--f-display); font-weight: 800; font-size: 1.7rem; line-he
 .dot.new { animation: pop .5s cubic-bezier(.3,1.6,.5,1) both; }
 @keyframes pop { from { transform: scale(0); opacity: 0 } to { transform: scale(1); opacity: 1 } }
 
-.anchor { background: var(--sheet); border: 2px solid var(--ink); border-radius: 4px; padding: 16px; display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }
-.pin { width: 36px; height: 44px; flex: none; }
-.anchor .when { font-family: var(--f-mono); font-size: 0.8rem; color: var(--muted); margin: 0 0 4px; }
-.anchor p.what { margin: 0; }
+.headright { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.helpbtn { background: none; border: 0; padding: 0; color: var(--water); font-weight: 700; font-size: 0.85rem; text-decoration: underline; text-underline-offset: 3px; }
+.howtobox { background: var(--sheet); border: 1.5px solid var(--line); border-radius: 4px; padding: 16px; }
+.howtobox .ghost { align-self: flex-start; }
+
+.anchor { background: var(--sheet); border: 2px solid var(--ink); border-radius: 4px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.anchor-title { font-size: 2rem; }
+.anchor-fig { margin: 2px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.anchor-fig img { display: block; width: 100%; max-width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 3px; border: 1.5px solid var(--line); background: var(--sea); }
+.anchor-fig figcaption { font-family: var(--f-mono); font-size: 0.7rem; color: var(--muted); }
+.anchor-fig figcaption a { color: inherit; }
+.anchor-date { margin: 0; font-family: var(--f-mono); font-weight: 600; font-size: 0.85rem; color: var(--water); letter-spacing: 0.02em; }
+.anchor-desc { margin: 0; max-width: 62ch; }
+.anchor-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.anchor-foot .tag { margin-top: 0; }
+.morebtn { background: none; border: 0; padding: 0; color: var(--water); font-weight: 700; font-size: 0.85rem; text-decoration: underline; text-underline-offset: 3px; }
+/* after round 1 the anchor folds down so the route stays near the map */
+.anchor.compact { gap: 6px; padding: 12px 14px; }
+.anchor.compact .anchor-title { font-size: 1.35rem; }
+.anchor.compact .anchor-fig, .anchor.compact .anchor-desc { display: none; }
 .tag { margin-top: 8px; display: inline-block; font-family: var(--f-display); font-weight: 800; font-size: 1.2rem; background: var(--survey); color: var(--survey-ink); padding: 0 8px; text-transform: uppercase; letter-spacing: 0.03em; }
 
 .howto { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
