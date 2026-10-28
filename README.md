@@ -7,6 +7,8 @@ A daily geography game. Each puzzle starts at an anchor, something that happened
 - `index.html`: the page
 - `style.css`: colors, type and layout (light and dark themes)
 - `game.js`: game logic and the map
+- `data/map.json`: the map (coastlines, borders, rivers, lakes, mountain ranges, place names)
+- `tools/build_map.py`: rebuilds `data/map.json` from Natural Earth files
 - `puzzles/index.json`: the launch date and the list of puzzle dates
 - `puzzles/YYYY-MM-DD.json`: one file per day
 
@@ -36,6 +38,10 @@ The game shows today's puzzle by the player's local date. If there's no file for
 - Keep neighboring events at least 20% apart in distance so the order is fair.
 - Include one event very close to the anchor and one very far away.
 - Write clues that make players work out the place rather than recognize it.
+
+## Map data
+
+The map is drawn from [Natural Earth](https://www.naturalearthdata.com), which is public domain. To rebuild it, download the Natural Earth GeoJSON files and run `python3 tools/build_map.py path/to/geojson`.
 
 ## Hosting
 

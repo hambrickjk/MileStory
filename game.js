@@ -5,10 +5,6 @@
 const R_EARTH = 3958.8; // miles
 const W = 400, H = 300, FIT = 128;
 const NS = "http://www.w3.org/2000/svg";
-const MAP_URLS = {
-  world: "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json",
-  states: "https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json",
-};
 const NICE = [5, 10, 25, 50, 100, 250, 500, 1000, 2000, 3000, 4000, 5000];
 
 const $ = id => document.getElementById(id);
@@ -32,15 +28,25 @@ async function loadPuzzle() {
   return { puzzle, date: pick, number: daysBetween(index.launch, pick) + 1 };
 }
 async function loadMap() {
-  if (!window.d3 || !window.topojson) return;
-  const [world, states] = await Promise.all(
-    [MAP_URLS.world, MAP_URLS.states].map(u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null)));
-  if (!world) return;
-  geo = {
-    land: topojson.feature(world, world.objects.land || world.objects.countries),
-    borders: topojson.mesh(world, world.objects.countries, (a, b) => a !== b),
-    states: states ? topojson.mesh(states, states.objects.states, (a, b) => a !== b) : null,
-  };
+  if (!window.d3) return;
+  try {
+    const m = await (await fetch("data/map.json")).json();
+    geo = {
+      land: m.land, borders: m.borders, stateLines: m.stateLines, lakes: m.lakes, rivers: m.rivers,
+      mountains: m.relief.filter(r => r.g).map(r => r.g),
+      relief: m.relief, labels: m.labels,
+      cities: m.cities,
+      riverLabels: Object.values(m.rivers.features.reduce((acc, f) => {
+        const { n, r } = f.properties;
+        if (!n) return acc;
+        const pts = f.geometry.coordinates.flat().filter((_, i) => i % 3 === 0);
+        if (!acc[n]) acc[n] = { n, r, pts: [] };
+        acc[n].r = Math.min(acc[n].r, r);
+        acc[n].pts.push(...pts);
+        return acc;
+      }, {})),
+    };
+  } catch (e) { geo = null; }
 }
 
 /* ---------- Geometry ---------- */
@@ -60,63 +66,217 @@ function screen(lat, lon, range) {
   return [W / 2 + d * Math.sin(b), H / 2 - d * Math.cos(b)];
 }
 
-/* ---------- Map drawing ---------- */
+/* ---------- Map drawing ----------
+   Basemap (water, land, relief, rivers, borders) is painted on a canvas so zooming stays smooth.
+   Rings, labels and event dots sit on an SVG layer on top. */
 const svg = $("map");
+const canvas = $("base");
+const ctx = canvas.getContext("2d");
+let colors = {}, graticule = null;
+
 function mk(tag, attrs, text) {
   const n = document.createElementNS(NS, tag);
   for (const k in attrs) n.setAttribute(k, attrs[k]);
   if (text != null) n.textContent = text;
   return n;
 }
-function drawMap(range, newId) {
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  ["sea", "land", "border", "coast", "river", "relief", "grat", "muted"].forEach(k => colors[k] = cs.getPropertyValue("--" + k).trim());
+}
+function sizeCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = canvas.clientWidth || W;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(w * dpr * H / W);
+  return (canvas.width / W);
+}
+
+function paintBase(range) {
+  const k = sizeCanvas();
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = colors.sea; ctx.fillRect(0, 0, W, H);
+  if (!projection) return;
+  projection.scale(pxPerMile(range) * R_EARTH);
+  const path = d3.geoPath(projection, ctx);
+  const stroke = (geom, color, width, dash) => {
+    ctx.beginPath(); path(geom); ctx.strokeStyle = color; ctx.lineWidth = width / k * k;
+    ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]);
+  };
+  // graticule every 10 degrees
+  stroke(graticule, colors.grat, 0.6);
+  if (!geo) return;
+  // land
+  ctx.beginPath(); path(geo.land); ctx.fillStyle = colors.land; ctx.fill();
+  // mountain ranges as a soft tint
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath(); geo.mountains.forEach(g => path(g)); ctx.fillStyle = colors.relief; ctx.fill();
+  ctx.globalAlpha = 1;
+  // lakes
+  ctx.beginPath(); path(geo.lakes); ctx.fillStyle = colors.sea; ctx.fill();
+  // rivers: fewer, thinner ones as the map zooms out
+  const maxRank = range < 400 ? 6 : range < 1200 ? 5 : range < 2500 ? 4 : 3;
+  [[0, 2, 1.4], [3, 4, 1], [5, 6, 0.7]].forEach(([lo, hi, w]) => {
+    const fs = geo.rivers.features.filter(f => f.properties.r >= lo && f.properties.r <= hi && f.properties.r <= maxRank);
+    if (fs.length) stroke({ type: "FeatureCollection", features: fs }, colors.river, w * (range < 300 ? 1.3 : 1));
+  });
+  stroke(geo.lakes, colors.coast, 0.5);
+  // state and country lines, then coastline
+  if (range < 3500) stroke(geo.stateLines, colors.border, 0.6, [2, 2]);
+  stroke(geo.borders, colors.border, 1.1);
+  stroke(geo.land, colors.coast, 0.7);
+}
+
+/* label placement with simple collision boxes */
+function placer() {
+  const boxes = [];
+  return function tryPlace(x, y, text, size, anchor, pad = 2) {
+    const w = text.length * size * 0.6 + pad * 2, h = size + pad * 2;
+    const x0 = anchor === "middle" ? x - w / 2 : anchor === "end" ? x - w : x;
+    const box = [x0, y - size - pad, x0 + w, y + pad];
+    if (box[0] < 2 || box[2] > W - 2 || box[1] < 2 || box[3] > H - 2) return false;
+    if (boxes.some(b => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) return false;
+    boxes.push(box);
+    return true;
+  };
+}
+function inView(x, y, m = 0) { return x >= m && x <= W - m && y >= m && y <= H - m; }
+
+function drawMap(range, newId, fast) {
+  if (!fast) paintBase(range);
   svg.innerHTML = "";
-  svg.appendChild(mk("rect", { x: 0, y: 0, width: W, height: H, fill: "var(--sea)" }));
-  if (geo && projection) {
-    projection.scale(pxPerMile(range) * R_EARTH);
-    svg.appendChild(mk("path", { d: pathGen(geo.land) || "", fill: "var(--land)", stroke: "none" }));
-    if (geo.states) svg.appendChild(mk("path", { d: pathGen(geo.states) || "", fill: "none", stroke: "var(--border)", "stroke-width": 0.6 }));
-    svg.appendChild(mk("path", { d: pathGen(geo.borders) || "", fill: "none", stroke: "var(--border)", "stroke-width": 1 }));
-  }
   const ppm = pxPerMile(range), cx = W / 2, cy = H / 2;
+  const place = placer();
+  place(cx - 8, cy + 8, "xx", 8, "start", 0); // keep the anchor clear
+  place(4, 22, "Centered on " + ANCHOR.short, 9, "start", 4); // keep the map badge clear
+
+  // distance rings
   NICE.filter(m => m * ppm >= 22 && m * ppm <= FIT * 1.25).slice(-3).forEach(m => {
     const r = m * ppm;
-    svg.appendChild(mk("circle", { cx, cy, r, fill: "none", stroke: "var(--water)", "stroke-width": 0.9, "stroke-dasharray": "3 4", opacity: 0.8 }));
-    svg.appendChild(mk("text", { x: cx + r * 0.707 + 3, y: cy + r * 0.707 + 10, "font-family": "var(--f-mono)", "font-size": 9, fill: "var(--water)" }, m.toLocaleString() + " mi"));
+    svg.appendChild(mk("circle", { cx, cy, r, fill: "none", stroke: "var(--water)", "stroke-width": 0.9, "stroke-dasharray": "3 4", opacity: 0.85 }));
+    const lx = cx + r * 0.707 + 3, ly = cy + r * 0.707 + 10, t = m.toLocaleString() + " mi";
+    if (place(lx, ly, t, 9, "start", 1)) svg.appendChild(mk("text", { x: lx, y: ly, class: "ringlb halo" }, t));
   });
+
+  // event dots first, so their labels win
   const pts = (S ? S.placed : []).map(id => ({ e: EVENTS[id], p: screen(EVENTS[id].lat, EVENTS[id].lon, range) }));
-  (P.landmarks || []).forEach(([name, la, lo]) => {
-    const [x, y] = screen(la, lo, range);
-    if (x < 10 || x > W - 40 || y < 22 || y > H - 8) return;
-    if (Math.hypot(x - cx, y - cy) < 22) return;
-    if (pts.some(({ p }) => Math.hypot(p[0] - x, p[1] - y) < 26)) return;
-    svg.appendChild(mk("circle", { cx: x, cy: y, r: 1.8, fill: "var(--muted)" }));
-    svg.appendChild(mk("text", { x: x + 4, y: y - 3, "font-family": "var(--f-body)", "font-size": 9, fill: "var(--muted)" }, name));
-  });
+  const later = [];
   svg.appendChild(mk("circle", { cx, cy, r: 6, fill: "var(--survey)", stroke: "var(--ink)", "stroke-width": 2 }));
-  if (range < 60) svg.appendChild(mk("text", { x: cx + 9, y: cy + 4, "font-family": "var(--f-body)", "font-weight": 700, "font-size": 10, fill: "var(--ink)" }, ANCHOR.short));
+  if (range < 60 && place(cx + 9, cy + 4, ANCHOR.short, 10, "start")) later.push(mk("text", { x: cx + 9, y: cy + 4, class: "lb-event halo" }, ANCHOR.short));
   pts.forEach(({ e, p }) => {
     const [x, y] = p;
-    if (x < -10 || x > W + 10 || y < -10 || y > H + 10) return;
+    if (!inView(x, y, -10)) return;
     const isNew = e.id === newId;
     const g = mk("g", { class: "dot" + (isNew ? " new" : "") });
     g.appendChild(mk("circle", { cx: x, cy: y, r: 5.5, fill: isNew ? "var(--survey)" : "var(--ink)", stroke: "var(--sheet)", "stroke-width": 1.5 }));
-    svg.appendChild(g);
-    if (Math.hypot(x - cx, y - cy) > 16) {
-      const right = x < W - 70;
-      svg.appendChild(mk("text", { x: right ? x + 8 : x - 8, y: y + 4, "text-anchor": right ? "start" : "end", "font-family": "var(--f-body)", "font-weight": 700, "font-size": 10.5, fill: "var(--ink)", stroke: "var(--land)", "stroke-width": 3, "paint-order": "stroke" }, e.short));
+    later.push(g);
+    if (Math.hypot(x - cx, y - cy) > 14) {
+      const right = x < W - 80, lx = right ? x + 8 : x - 8;
+      if (place(lx, y + 4, e.short, 10.5, right ? "start" : "end") || isNew)
+        later.push(mk("text", { x: lx, y: y + 4, "text-anchor": right ? "start" : "end", class: "lb-event halo" }, e.short));
     }
   });
+
+  if (geo && !fast) {
+    const L = geo.labels;
+    const label = (lb, text, cls, size, halo) => {
+      const [x, y] = screen(lb.y, lb.x, range);
+      if (!inView(x, y, 4)) return;
+      if (miles(lb.y, lb.x) > range * 3) return;
+      if (place(x, y + size / 2, text, size, "middle"))
+        svg.appendChild(mk("text", { x, y: y + size / 2 - 1, "text-anchor": "middle", class: cls + " " + halo }, text));
+    };
+    // seas and oceans
+    const seaRank = range > 3000 ? 0 : range > 1200 ? 1 : range > 500 ? 2 : 3;
+    L.filter(l => l.t === "sea" && l.r <= seaRank).forEach(l => label(l, l.n, "lb-sea", 9, "halo-sea"));
+    // countries
+    if (range >= 900) {
+      const cRank = range > 3500 ? 2 : range > 2000 ? 3 : 4;
+      L.filter(l => l.t === "country" && l.r <= cRank).sort((a, b) => a.r - b.r)
+        .forEach(l => label(l, l.n, "lb-country", 8.5, "halo"));
+    }
+    // states and provinces
+    if (range <= 2600) {
+      const full = range <= 700;
+      L.filter(l => l.t === "state").sort((a, b) => a.r - b.r)
+        .forEach(l => label(l, full ? l.n : l.a, "lb-state", 8.5, "halo"));
+    }
+    // mountain ranges, plains, deserts
+    if (range >= 150) {
+      const rRank = range > 2500 ? 1 : range > 700 ? 2 : 3;
+      geo.relief.filter(r => r.r <= rRank).forEach(r => label(r, r.n, "lb-relief", 8, "halo"));
+    }
+    // rivers: label each named river at a visible stretch away from the center
+    if (range <= 900) {
+      const vRank = range <= 250 ? 6 : range <= 500 ? 4 : 2;
+      geo.riverLabels.filter(r => r.r <= vRank).forEach(r => {
+        for (const [lon, lat] of r.pts) {
+          const [x, y] = screen(lat, lon, range);
+          const d = Math.hypot(x - cx, y - cy);
+          if (!inView(x, y, 10) || d < 35 || d > 130) continue;
+          if (place(x + 5, y - 3, r.n, 8.5, "start")) {
+            svg.appendChild(mk("text", { x: x + 5, y: y - 3, class: "lb-river halo" }, r.n));
+            break;
+          }
+        }
+      });
+    }
+    // cities: more of them as the map zooms in
+    const cityRank = range <= 200 ? 7 : range <= 500 ? 6 : range <= 1200 ? 3 : range <= 3000 ? 2 : 0;
+    geo.cities.filter(c => c.r <= cityRank).forEach(c => {
+      const [x, y] = screen(c.y, c.x, range);
+      if (!inView(x, y, 8) || Math.hypot(x - cx, y - cy) < 14) return;
+      if (!place(x + 4, y - 2, c.n, 9, "start")) return;
+      svg.appendChild(mk("circle", { cx: x, cy: y, r: 1.8, fill: "var(--ink)" }));
+      svg.appendChild(mk("text", { x: x + 4, y: y - 2, class: "lb-city halo" }, c.n));
+    });
+  }
+  // reference cities from the puzzle file
+  if (!fast) (P.landmarks || []).forEach(([name, la, lo]) => {
+    const [x, y] = screen(la, lo, range);
+    if (!inView(x, y, 8) || Math.hypot(x - cx, y - cy) < 20) return;
+    if (!place(x + 4, y - 2, name, 9, "start")) return;
+    svg.appendChild(mk("circle", { cx: x, cy: y, r: 1.8, fill: "var(--ink)" }));
+    svg.appendChild(mk("text", { x: x + 4, y: y - 2, class: "lb-city halo" }, name));
+  });
+  later.forEach(n => svg.appendChild(n));
+}
+/* Zooming on an azimuthal map centered on the anchor is a pure scale around the center,
+   so the animation scales two pre-rendered snapshots and cross-fades them instead of
+   redrawing every coastline on every frame. */
+function snapshot(range) {
+  paintBase(range);
+  const c = document.createElement("canvas");
+  c.width = canvas.width; c.height = canvas.height;
+  c.getContext("2d").drawImage(canvas, 0, 0);
+  return c;
 }
 function zoomTo(target, newId) {
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const from = curRange;
   if (reduce || Math.abs(Math.log(target / from)) < 0.01) { curRange = target; drawMap(target, newId); return; }
+  const a = snapshot(from), b = snapshot(target);
   const t0 = performance.now(), dur = 900;
+  function blit(img, scale, alpha) {
+    const w = canvas.width, h = canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, w / 2 - (w * scale) / 2, h / 2 - (h * scale) / 2, w * scale, h * scale);
+    ctx.globalAlpha = 1;
+  }
   function step(now) {
     const k = Math.min(1, (now - t0) / dur), ease = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
     curRange = Math.exp(Math.log(from) + (Math.log(target) - Math.log(from)) * ease);
-    drawMap(curRange, k < 1 ? null : newId);
-    if (k < 1) requestAnimationFrame(step);
+    if (k < 1) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = colors.sea; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      blit(b, target / curRange, 1);
+      blit(a, from / curRange, 1 - ease);
+      drawMap(curRange, null, true);
+      requestAnimationFrame(step);
+    } else {
+      drawMap(target, newId);
+    }
   }
   requestAnimationFrame(step);
 }
@@ -261,9 +421,13 @@ document.addEventListener("click", ev => {
 
   if (window.d3) {
     projection = d3.geoAzimuthalEquidistant().rotate([-ANCHOR.lon, -ANCHOR.lat]).translate([W / 2, H / 2])
-      .clipAngle(170).clipExtent([[-2, -2], [W + 2, H + 2]]);
+      .clipAngle(170).precision(0).clipExtent([[-2, -2], [W + 2, H + 2]]);
     pathGen = d3.geoPath(projection);
+    graticule = d3.geoGraticule10();
   }
+  readColors();
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColors(); drawMap(curRange, null); });
+  window.addEventListener("resize", () => drawMap(curRange, null));
   S = fresh();
   drawMap(curRange, null);
   await loadMap();

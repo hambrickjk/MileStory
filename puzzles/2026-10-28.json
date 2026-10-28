@@ -8,8 +8,17 @@
     "lat": 38.6247,
     "lon": -90.1848
   },
-  "pair": ["wright", "gold"],
-  "deal": ["mcd", "titanic", "lc", "kilby", "cook"],
+  "pair": [
+    "wright",
+    "gold"
+  ],
+  "deal": [
+    "mcd",
+    "titanic",
+    "lc",
+    "kilby",
+    "cook"
+  ],
   "events": {
     "wright": {
       "year": "1903",
@@ -18,7 +27,8 @@
       "place": "Kill Devil Hills, North Carolina",
       "short": "Kitty Hawk",
       "what": "Wright brothers' first flight",
-      "lat": 36.014, "lon": -75.668
+      "lat": 36.014,
+      "lon": -75.668
     },
     "gold": {
       "year": "1848",
@@ -27,7 +37,8 @@
       "place": "Coloma, California",
       "short": "Coloma",
       "what": "Gold found at Sutter's Mill",
-      "lat": 38.8003, "lon": -120.8908
+      "lat": 38.8003,
+      "lon": -120.8908
     },
     "mcd": {
       "year": "1955",
@@ -36,7 +47,8 @@
       "place": "Des Plaines, Illinois",
       "short": "Des Plaines",
       "what": "Ray Kroc's first McDonald's",
-      "lat": 42.0405, "lon": -87.887
+      "lat": 42.0405,
+      "lon": -87.887
     },
     "titanic": {
       "year": "1912",
@@ -45,7 +57,8 @@
       "place": "North Atlantic Ocean",
       "short": "Titanic",
       "what": "Titanic sinks",
-      "lat": 41.7325, "lon": -49.9469
+      "lat": 41.7325,
+      "lon": -49.9469
     },
     "lc": {
       "year": "1804",
@@ -54,7 +67,8 @@
       "place": "Camp River Dubois, Illinois",
       "short": "Camp Dubois",
       "what": "Lewis & Clark set out",
-      "lat": 38.83, "lon": -90.106
+      "lat": 38.83,
+      "lon": -90.106
     },
     "kilby": {
       "year": "1958",
@@ -63,7 +77,8 @@
       "place": "Dallas, Texas",
       "short": "Dallas",
       "what": "First integrated circuit",
-      "lat": 32.92, "lon": -96.75
+      "lat": 32.92,
+      "lon": -96.75
     },
     "cook": {
       "year": "1778",
@@ -72,12 +87,8 @@
       "place": "Waimea, Kauai, Hawaii",
       "short": "Kauai",
       "what": "Captain Cook reaches Hawaii",
-      "lat": 21.956, "lon": -159.669
+      "lat": 21.956,
+      "lon": -159.669
     }
-  },
-  "landmarks": [
-    ["Chicago", 41.88, -87.63], ["New York", 40.71, -74.01], ["Los Angeles", 34.05, -118.24],
-    ["Denver", 39.74, -104.99], ["Houston", 29.76, -95.37], ["Miami", 25.76, -80.19],
-    ["Seattle", 47.61, -122.33], ["Kansas City", 39.1, -94.58], ["Nashville", 36.16, -86.78], ["London", 51.51, -0.13]
-  ]
+  }
 }

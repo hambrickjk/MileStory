@@ -13,9 +13,15 @@ img, svg { max-width: 100%; }
   --survey: #E2A12B;
   --survey-ink: #1C2A33;
   --water: #3C6E8F;
-  --sea: #D6E3E6;
-  --land: #F6F4EC;
-  --border: #A9B4AE;
+  --sea: #C9DDE3;
+  --land: #F4F1E6;
+  --border: #9AA6A0;
+  --coast: #7E9AA3;
+  --river: #5E93B0;
+  --relief: #DCD3BC;
+  --relief-ink: #8A7A58;
+  --sea-ink: #4F7C92;
+  --grat: #B5CDD5;
   --good: #2F7D4F;
   --good-bg: #E1F0E4;
   --miss: #B2452F;
@@ -27,13 +33,13 @@ img, svg { max-width: 100%; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper: #131B20; --sheet: #1B252B; --ink: #E6ECE6; --muted: #98A6A8; --line: #2F3D44;
-    --survey: #F0B444; --survey-ink: #131B20; --water: #7FB3D3; --sea: #16242C; --land: #26333A; --border: #4A5B62;
+    --survey: #F0B444; --survey-ink: #131B20; --water: #7FB3D3; --sea: #142630; --land: #2A353A; --border: #56666C; --coast: #4D6E7C; --river: #4F86A6; --relief: #3A3F38; --relief-ink: #B3A27E; --sea-ink: #7FA9BF; --grat: #1F3541;
     --good: #6FC48F; --good-bg: #1D3427; --miss: #E7826C; --miss-bg: #3A231E; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --paper: #131B20; --sheet: #1B252B; --ink: #E6ECE6; --muted: #98A6A8; --line: #2F3D44;
-  --survey: #F0B444; --survey-ink: #131B20; --water: #7FB3D3; --sea: #16242C; --land: #26333A; --border: #4A5B62;
+  --survey: #F0B444; --survey-ink: #131B20; --water: #7FB3D3; --sea: #142630; --land: #2A353A; --border: #56666C; --coast: #4D6E7C; --river: #4F86A6; --relief: #3A3F38; --relief-ink: #B3A27E; --sea-ink: #7FA9BF; --grat: #1F3541;
   --good: #6FC48F; --good-bg: #1D3427; --miss: #E7826C; --miss-bg: #3A231E; color-scheme: dark;
 }
 body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5; }
@@ -49,7 +55,19 @@ header { display: flex; align-items: baseline; justify-content: space-between; g
 h2 { font-family: var(--f-display); font-weight: 800; font-size: 1.7rem; line-height: 1.05; margin: 0; text-wrap: balance; }
 
 .mapbox { background: var(--sea); border: 2px solid var(--ink); border-radius: 4px; overflow: hidden; position: relative; }
-.mapbox svg { display: block; width: 100%; height: auto; }
+.mapbox { aspect-ratio: 4 / 3; max-width: 100%; }
+.mapbox canvas, .mapbox svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mapbox svg text { font-family: var(--f-body); }
+.lb-sea { font-style: italic; font-size: 9px; letter-spacing: 0.08em; fill: var(--sea-ink); }
+.lb-country { font-size: 8.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; fill: var(--muted); }
+.lb-state { font-size: 8.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; fill: var(--muted); opacity: 0.9; }
+.lb-relief { font-style: italic; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; fill: var(--relief-ink); }
+.lb-river { font-style: italic; font-size: 8.5px; fill: var(--river); }
+.lb-city { font-size: 9px; fill: var(--ink); }
+.lb-event { font-size: 10.5px; font-weight: 700; fill: var(--ink); }
+.halo { paint-order: stroke; stroke: var(--land); stroke-width: 3px; stroke-linejoin: round; }
+.halo-sea { paint-order: stroke; stroke: var(--sea); stroke-width: 3px; stroke-linejoin: round; }
+.ringlb { font-family: var(--f-mono) !important; font-size: 9px; fill: var(--sea-ink); }
 .mapbar { position: absolute; left: 8px; top: 8px; font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; background: var(--sheet); color: var(--ink); padding: 2px 6px; border: 1px solid var(--line); border-radius: 3px; }
 .dot { transform-box: fill-box; transform-origin: center; }
 .dot.new { animation: pop .5s cubic-bezier(.3,1.6,.5,1) both; }
