@@ -1,3 +1,8 @@
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img, svg { max-width: 100%; }
 /* Layout: one narrow column like a folded road map. Live map on top, then the round's new event, then the growing distance ladder. */
 :root {
   --paper: #EDF0EA;
